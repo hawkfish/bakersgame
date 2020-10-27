@@ -80,15 +80,15 @@ class BoardUnitTest(unittest.TestCase):
         suits = cards // 13
         self.assertEqual(suits, b._nsuits)
 
-        self.assertEqual(suits, len(b._aces))
-        for a, ace in enumerate(b._aces):
+        self.assertEqual(suits, len(b._foundations))
+        for a, ace in enumerate(b._foundations):
             self.assertEqual(ace, board.noCard, f"Ace {a} not empty")
 
-        self.assertEqual(suits * 2, len(b._columns))
-        for c, column in enumerate(b._columns):
-            expected = cards // len(b._columns) + (c < suits)
-            self.assertEqual(expected, len(column), f"Column {c} incorrectly sized")
-            for r, card in enumerate(column):
+        self.assertEqual(suits * 2, len(b._tableau))
+        for c, cascade in enumerate(b._tableau):
+            expected = cards // len(b._tableau) + (c < suits)
+            self.assertEqual(expected, len(cascade), f"Column {c} incorrectly sized")
+            for r, card in enumerate(cascade):
                 expected = deck[r * suits * 2 + c]
                 self.assertEqual(expected, card)
 
@@ -96,9 +96,9 @@ class BoardUnitTest(unittest.TestCase):
         self.assertTrue(b._resort, "Not initialised to resort")
         self.assertTrue(b._rehash, "Not initialised to rehash")
 
-        self.assertEqual(len(b._columns), len(b._sorted), "Hashing columns not initialised")
+        self.assertEqual(len(b._tableau), len(b._sorted), "Hashing cascades not initialised")
         for s, actual in enumerate(b._sorted):
-            self.assertEqual(b._columns[s], actual)
+            self.assertEqual(b._tableau[s], actual)
 
     def test_init(self):
         self.assert_init(unshuffled)
@@ -160,23 +160,155 @@ Cells:
 """
         self.assert_str(expected, two_aces)
 
-    def test_move_cover_no_aces(self):
+    def test_cover_no_aces(self):
         b = board.Board(no_aces)
-        actual = b.coverAces()
+        actual = b.coverFoundations()
         expected = []
         self.assertEqual(expected, actual)
 
-    def test_move_cover_two_aces(self):
+    def test_cover_two_aces(self):
         b = board.Board(two_aces)
-        actual = b.coverAces()
+        actual = b.coverFoundations()
         expected = [(0, -3,), (3, -4),]
         self.assertEqual(expected, actual)
 
-    def test_move_cover_two_aces_two(self):
+    def test_cover_two_aces_two(self):
         b = board.Board(two_aces_two)
-        actual = b.coverAces()
+        actual = b.coverFoundations()
         expected = [(0, -1,), (0, -4), (0, -4), ]
         self.assertEqual(expected, actual)
+
+    def test_move_between_cascades_and_cells(self):
+        b = board.Board(unshuffled)
+
+        #   Move to cell #1
+        b.moveCard((0,8,))
+        self.assertTrue(b._rehash)
+        self.assertEqual(1, b._occupied)
+        self.assertEqual(6, len(b._tableau[0]))
+
+        #   Move to cell #2
+        b.moveCard((0,8,))
+        self.assertTrue(b._rehash)
+        self.assertEqual(2, b._occupied)
+        self.assertEqual(5, len(b._tableau[0]))
+
+        #   Move to cell #3
+        b.moveCard((1,8,))
+        self.assertTrue(b._rehash)
+        self.assertEqual(3, b._occupied)
+        self.assertEqual(6, len(b._tableau[1]))
+
+        #   Move to cell #4
+        b.moveCard((2,8,))
+        self.assertTrue(b._rehash)
+        self.assertEqual(4, b._occupied)
+        self.assertEqual(6, len(b._tableau[2]))
+
+        #   Move to cascade #1
+        b.moveCard((11,3,))
+        self.assertTrue(b._rehash)
+        self.assertEqual(3, b._occupied)
+        self.assertEqual(8, len(b._tableau[3]))
+
+        #   Move to cascade #2
+        b.moveCard((10,3,))
+        self.assertTrue(b._rehash)
+        self.assertEqual(2, b._occupied)
+        self.assertEqual(9, len(b._tableau[3]))
+
+        #   Move to cascade #3
+        b.moveCard((8,3,))
+        self.assertTrue(b._rehash)
+        self.assertEqual(1, b._occupied)
+        self.assertEqual(10, len(b._tableau[3]))
+
+        #   Move to cascade #3
+        b.moveCard((8,1,))
+        self.assertTrue(b._rehash)
+        self.assertEqual(0, b._occupied)
+        self.assertEqual(7, len(b._tableau[1]))
+
+    def test_move_between_cascades_and_foundations(self):
+        b = board.Board(two_aces_two)
+
+        #   Move to foundations #1
+        b._resort = b._rehash = False
+        b.moveCard((0,-1,))
+        self.assertTrue(b._rehash)
+        self.assertFalse(b._resort)
+        self.assertEqual(0, b._occupied)
+        self.assertEqual(6, len(b._tableau[0]))
+        self.assertEqual([0, board.noCard, board.noCard, board.noCard,], b._foundations)
+
+        #   Move to foundations #2
+        b._resort = b._rehash = False
+        b.moveCard((0,-4,))
+        self.assertTrue(b._rehash)
+        self.assertFalse(b._resort)
+        self.assertEqual(0, b._occupied)
+        self.assertEqual(5, len(b._tableau[0]))
+        self.assertEqual([0, board.noCard, board.noCard, 0,], b._foundations)
+
+        #   Move to foundations #3
+        b._resort = b._rehash = False
+        b.moveCard((0,-4,))
+        self.assertTrue(b._rehash)
+        self.assertFalse(b._resort)
+        self.assertEqual(0, b._occupied)
+        self.assertEqual(4, len(b._tableau[0]))
+        self.assertEqual([0, board.noCard, board.noCard, 1,], b._foundations)
+
+        #   Move from foundations #1
+        b._resort = b._rehash = False
+        b.moveCard((-4,0,), False)
+        self.assertTrue(b._rehash)
+        self.assertFalse(b._resort)
+        self.assertEqual(0, b._occupied)
+        self.assertEqual(5, len(b._tableau[0]))
+        self.assertEqual([0, board.noCard, board.noCard, 0,], b._foundations)
+
+        #   Move from foundations #2
+        b._resort = b._rehash = False
+        b.moveCard((-4,0,), False)
+        self.assertTrue(b._rehash)
+        self.assertFalse(b._resort)
+        self.assertEqual(0, b._occupied)
+        self.assertEqual(6, len(b._tableau[0]))
+        self.assertEqual([0, board.noCard, board.noCard, board.noCard,], b._foundations)
+
+        #   Move from foundations #2
+        b._resort = b._rehash = False
+        b.moveCard((-1,0,), False)
+        self.assertTrue(b._rehash)
+        self.assertFalse(b._resort)
+        self.assertEqual(0, b._occupied)
+        self.assertEqual(7, len(b._tableau[0]))
+        self.assertEqual([board.noCard, board.noCard, board.noCard, board.noCard,], b._foundations)
+
+    def test_move_to_empty_cascade(self):
+        b = board.Board(unshuffled)
+
+        #   Put kings on the foundations
+        king = 12
+        for f, foundation in enumerate(b._foundations): b._foundations[f] = king
+
+        #   Clear the cascades
+        for cascade in b._tableau: cascade.clear()
+
+        #   Move a king to an empty cell
+        b.moveCard((-1, 0,))
+        self.assertEqual(king, b._tableau[0][-1])
+        self.assertTrue(b._resort)
+        self.assertTrue(b._rehash)
+
+        #   Move a queen to an empty cell
+        queen = king - 1
+        b._resort = b._rehash = False
+        b.moveCard((-1, 1,))
+        self.assertEqual(queen, b._tableau[1][-1])
+        self.assertTrue(b._resort)
+        self.assertTrue(b._rehash)
 
 if __name__ == '__main__':
     unittest.main()
