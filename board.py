@@ -153,40 +153,35 @@ class Board:
         #   Need to rehash after moving
         self._rehash = True
 
-    def coverFoundations(self):
+        return move
+
+    def moveToFoundations(self):
         """Move all cards that can cover aces.
         Return a list of the moves.
         This list should be treated as a single unit."""
         moves = []
-        ncols = len(self._tableau)
 
-        for c in range(0, ncols):
-            cascade = self._tableau[c]
-            while cascade:
-                card = cascade[-1]
-                cardSuit = suit(card)
-                cardPips = pips(card)
-                #   Can we remove it?
-                if self._foundations[cardSuit] != cardPips - 1: break
+        moved = 1
+        while moved != len(moves):
+            moved = len(moves)
+            for start, cascade in enumerate(self._tableau):
+                while cascade:
+                    card = cascade[-1]
+                    cardSuit = suit(card)
+                    cardPips = pips(card)
+                    #   Can we remove it?
+                    if self._foundations[cardSuit] != cardPips - 1: break
 
-                self._foundations[cardSuit] = cardPips
-                cascade.pop()
-                moves.append((c, -cardSuit - 1))
-                self._rehash = True
-                if not cascade: self._resort = True
-
-        #   If anything changed, we need to rehash.
-        if moves: self._rehash = True
+                    moves.append(self.moveCard((start, -cardSuit - 1,), False))
 
         return moves
 
-    def enumerateFinishColumns(self, start, card):
+    def enumerateFinishCascades(self, start, card):
         """Enumerate all the finish cascades for a card."""
         moves = []
-        for finish in range(len(self._tableau)):
+        for finish, cascade in enumerate(self._tableau):
             if start == finish: continue
 
-            cascade = self._tableau[finish]
             if cascade:
                 under = cascade[-1]
                 #   We can't put a king on an ace because
@@ -217,19 +212,13 @@ class Board:
         for start in range(ncols):
             cascade = self._tableau[start]
             if cascade:
-                moves.extend(self.enumerateFinishColumns(start, cascade[-1]))
+                moves.extend(self.enumerateFinishCascades(start, cascade[-1]))
 
         #   1. Move from cells to cascades
         for cell in range(0, self._occupied):
-            moves.extend(self.enumerateFinishColumns(cell + ncols, self._cells[cell]))
+            moves.extend(self.enumerateFinishCascades(cell + ncols, self._cells[cell]))
 
         return moves
-
-    def backtrack(self, moves):
-        """Undoes a sequence of moves by executing them in reverse order."""
-        while moves:
-            finish, start = moves.pop()
-            self.moveCard((start, finish,), False)
 
     def memento(self):
         """Lazily compute the cached memento."""
@@ -242,13 +231,19 @@ class Board:
 
         #   If cards moved, re-hash the sorted cascades
         if self._rehash:
-            self._memento = hash( (tuple(cascade) for cascade in self._sorted) )
+            self._memento = hash( tuple(tuple(cascade) for cascade in self._sorted) )
             self._rehash = False
 
         return self._memento
 
     def solved(self):
         return sum(self._foundations) == self._nsuits * 12
+
+    def backtrack(self, moves):
+        """Undoes a sequence of moves by executing them in reverse order."""
+        while moves:
+            finish, start = moves.pop()
+            self.moveCard((start, finish,), False)
 
     def solve(self):
         """Finds the first solution of the board using a depth first search."""

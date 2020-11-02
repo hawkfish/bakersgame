@@ -160,23 +160,39 @@ Cells:
 """
         self.assert_str(expected, two_aces)
 
-    def test_cover_no_aces(self):
+    def test_move_to_foundations_no_aces(self):
         b = board.Board(no_aces)
-        actual = b.coverFoundations()
+        b._rehash = b._resort = False
+        actual = b.moveToFoundations()
         expected = []
         self.assertEqual(expected, actual)
+        self.assertFalse(b._rehash)
+        self.assertFalse(b._resort)
 
-    def test_cover_two_aces(self):
+    def test_move_to_foundations_two_aces(self):
         b = board.Board(two_aces)
-        actual = b.coverFoundations()
+        b._rehash = b._resort = False
+        actual = b.moveToFoundations()
         expected = [(0, -3,), (3, -4),]
         self.assertEqual(expected, actual)
+        self.assertTrue(b._rehash)
+        self.assertFalse(b._resort)
 
-    def test_cover_two_aces_two(self):
+    def test_move_to_foundations_two_aces_two(self):
         b = board.Board(two_aces_two)
-        actual = b.coverFoundations()
+        b._rehash = b._resort = False
+        actual = b.moveToFoundations()
         expected = [(0, -1,), (0, -4), (0, -4), ]
         self.assertEqual(expected, actual)
+        self.assertTrue(b._rehash)
+        self.assertFalse(b._resort)
+
+    def test_move_to_foundations_reversed(self):
+        setup = board.Board(reversed)
+        setup._rehash = setup._resort = False
+        actual = setup.moveToFoundations()
+        self.assertTrue(setup._rehash)
+        self.assertTrue(setup._resort)
 
     def test_move_between_cascades_and_cells(self):
         b = board.Board(unshuffled)
@@ -309,6 +325,128 @@ Cells:
         self.assertEqual(queen, b._tableau[1][-1])
         self.assertTrue(b._resort)
         self.assertTrue(b._rehash)
+
+    def test_enumerate_finish_to_card(self):
+        b = board.Board(no_aces)
+
+        start = 1
+        actual = b.enumerateFinishCascades(start, b._tableau[start][-1])
+        expected = [(start, 7,),]
+        self.assertEqual(expected, actual)
+
+    def test_enumerate_finish_to_empty(self):
+        setup = board.Board(unshuffled)
+
+        #   Set up an empty cascade
+        setup._foundations = [12 - len(setup._tableau) + 1, 12, 12, 12,]
+
+        #   Clubs in the top row, except the first cascade
+        for start, cascade in enumerate(setup._tableau):
+            cascade.clear()
+            if start: cascade.append(start)
+
+        #   Every card can move to the left or the next cascade
+        for start, cascade in enumerate(setup._tableau):
+            if cascade:
+                actual = setup.enumerateFinishCascades(start, cascade[-1])
+                expected = [(start, 0,),]
+                if start + 1 < len(setup._tableau):
+                    expected.append( (start, start + 1,) )
+                self.assertEqual(expected, actual)
+
+    def test_enumerate_moves_unshuffled(self):
+        setup = board.Board(unshuffled)
+        width = len(setup._tableau)
+
+        #   3. Move from cascades to the next open width
+        expected = [(start, width,) for start in range(width)]
+
+        #   2. Move from cascades to cascades
+        for start in range(width):
+            if start != 3:
+                expected.append((start, (start + 1) % width,))
+
+        #   1. Move from cells to cascades
+        #   ...
+
+        actual = setup.enumerateMoves()
+        self.assertEqual(expected, actual)
+
+    def test_enumerate_moves_no_aces(self):
+        setup = board.Board(no_aces)
+        width = len(setup._tableau)
+
+        #   3. Move from cascades to the next open cell
+        expected = [(start, width,) for start in range(width)]
+
+        #   2. Move from cascades to cascades
+        expected.append( (1, 7,) )
+
+        #   1. Move from cells to cascades
+
+        actual = setup.enumerateMoves()
+        self.assertEqual(expected, actual)
+
+    def test_enumerate_moves_two_aces(self):
+        setup = board.Board(two_aces)
+        width = len(setup._tableau)
+
+        #   3. Move from cascades to the next open cell
+        expected = [(start, width,) for start in range(width)]
+
+        #   2. Move from cascades to cascades
+
+        #   1. Move from cells to cascades
+
+        actual = setup.enumerateMoves()
+        self.assertEqual(expected, actual)
+
+    def test_enumerate_moves_two_aces_two(self):
+        setup = board.Board(two_aces_two)
+        width = len(setup._tableau)
+
+        #   Clear the aces
+        setup.moveToFoundations()
+
+        #   First move options - cells only
+        expected = [(start, width,) for start in range(width)]
+        actual = setup.enumerateMoves()
+        self.assertEqual(expected, actual)
+
+        #   Uncover QH
+        setup.moveCard( (3, width,) )
+        expected = [(start, width + 1,) for start in range(width)]
+        expected.append( (3, 6,) )
+        actual = setup.enumerateMoves()
+        self.assertEqual(expected, actual)
+
+    def test_memento_values(self):
+        visited = set()
+        for deck in (unshuffled, reversed, no_aces, two_aces, two_aces_two,):
+            setup = board.Board(deck)
+            self.assertTrue(setup._resort)
+            self.assertTrue(setup._rehash)
+
+            memento = setup.memento()
+            self.assertFalse(setup._resort)
+            self.assertFalse(setup._rehash)
+            self.assertEqual(memento, setup._memento)
+
+            self.assertFalse( memento in visited, f"Duplicate memento #{len(visited)}: {memento}" )
+            visited.add(memento)
+
+            #   Check that a new copy gets the same hash
+            setup = board.Board(deck)
+            self.assertEqual(memento, setup.memento())
+
+    def test_not_solved(self):
+        setup = board.Board(unshuffled)
+        self.assertFalse( setup.solved() )
+
+    def test_solved(self):
+        setup = board.Board(reversed)
+        setup.moveToFoundations()
+        self.assertTrue( setup.solved() )
 
 if __name__ == '__main__':
     unittest.main()
