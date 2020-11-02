@@ -448,5 +448,36 @@ Cells:
         setup.moveToFoundations()
         self.assertTrue( setup.solved() )
 
+    def test_backtrack_foundations(self):
+        setup = board.Board(reversed)
+        expected = str(setup)
+
+        #   Backtracking should undo everything
+        moves = setup.moveToFoundations()
+        setup.backtrack( moves )
+        actual = str(setup)
+
+        self.assertEqual(expected, actual)
+
+    def assert_backtrack(self, deck):
+        setup = board.Board(deck)
+        setup.moveToFoundations()
+        moves = setup.enumerateMoves()
+        for move in moves:
+            expected = str(setup)
+            setup.moveCard(move)
+            setup.backtrack( [move,] )
+            actual = str(setup)
+            self.assertEqual(expected, actual, move)
+
+    def test_backtrack_no_aces(self):
+        self.assert_backtrack(no_aces)
+
+    def test_backtrack_two_aces(self):
+        self.assert_backtrack(two_aces)
+
+    def test_backtrack_two_aces_two(self):
+        self.assert_backtrack(two_aces_two)
+
 if __name__ == '__main__':
     unittest.main()

@@ -124,8 +124,9 @@ class Board:
             if validate:
                 assert cell < self._occupied, f"Move from empty cell {cell}"
             card = self._cells[cell]
-            self._cells[cell] = self._cells[self._occupied - 1]
             self._occupied -= 1
+            self._cells[cell] = self._cells[self._occupied]
+            self._cells[self._occupied] = noCard
 
         #   To a foundation
         if finish < 0:
