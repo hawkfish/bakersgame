@@ -35,7 +35,7 @@ class Board:
 
         #   Cells contains cards
         self._cells = self._nsuits * [ noCard ]
-        self._occupied = 0
+        self._firstFree = 0
 
         #   Columns contains the main board layout
         self._tableau = [ [] for c in range(self._nsuits * 2) ]
@@ -82,7 +82,7 @@ class Board:
 
         #    Cells at the bottom
         result.append('Cells:')
-        row = [formatCard(cell) if r < cell else '--' for cell in self._cells]
+        row = [formatCard(cell) if cell != noCard else '--' for cell in self._cells]
         result.append(' '.join(row))
         result.append('')
 
@@ -106,6 +106,7 @@ class Board:
             foundation = -start - 1
             if validate:
                 assert foundation < len(self._foundations), f"Move from invalid foundation {foundation}"
+                assert self._foundations[foundation] != noCard, f"Move from empty foundation {foundation}"
             cardPips = self._foundations[foundation]
             self._foundations[foundation] = cardPips - 1
             card = makeCard(foundation, cardPips)
@@ -122,34 +123,48 @@ class Board:
         else:
             cell = start - ncols
             if validate:
-                assert cell < self._occupied, f"Move from empty cell {cell}"
+                assert cell < len(self._cells), f"Move from invalid cell {cell}"
+                assert self._cells[cell] != noCard, f"Move from empty cell {cell}"
             card = self._cells[cell]
-            self._occupied -= 1
-            self._cells[cell] = self._cells[self._occupied]
-            self._cells[self._occupied] = noCard
+            self._cells[cell] = noCard
+
+            #   Check whether this is now the first free cell
+            if self._firstFree > cell:
+                self._firstFree = cell
 
         #   To a foundation
         if finish < 0:
             foundation = suit(card)
+            cardPips = pips(card)
             if validate:
                 assert foundation < len(self._foundations), f"Move to invalid foundation {foundation}"
-            self._foundations[foundation] = pips(card)
+                assert self._foundations[foundation] == cardPips - 1, f"Move of {formatCard(card)} to foundation {foundation} not onto previous card {formatCard(makeCard(foundation, self._foundations[foundation]))}"
+            self._foundations[foundation] = cardPips
 
         #   To a cascade
         elif finish < ncols:
             cascade = self._tableau[finish]
             if validate and cascade:
-                assert cascade[-1] == card + 1, f"Move not onto subsequent card"
+                assert cascade[-1] == card + 1, f"Move of {formatCard(card)} to cascade {finish} not onto subsequent card {formatCard(cascade[-1])}"
             if not cascade: self._resort = True
             cascade.append(card)
 
         #   To a cell
         else:
-            #   Push to the end
+            #   Insert into cell
+            cell = finish - ncols
             if validate:
-                assert self._occupied <= len(self._cells), "Cells full"
-            self._cells[self._occupied] = card
-            self._occupied += 1
+                assert cell < len(self._cells), f"Move to invalid cell {cell}"
+                assert self._cells[cell] == noCard, f"Move to occupied cell {formatCard(self._cells[cell])}"
+            self._cells[cell] = card
+
+            #   Update the first free cell
+            if cell == self._firstFree:
+                self._firstFree += 1
+                while self._firstFree < len(self._cells):
+                    if self._cells[self._firstFree] == noCard:
+                        break
+                    self._firstFree += 1
 
         #   Need to rehash after moving
         self._rehash = True
@@ -202,22 +217,22 @@ class Board:
         #   Build the list in reverse order
         #   because we will pop choices from the back.
 
-        #   3. Move from cascades to the next open cell
-        if self._occupied < len(self._cells):
-            finish = ncols + self._occupied
-            for start in range(0, ncols):
-                if not self._tableau[start]: continue
+        #   3. Move from cascades to the first open cell
+        if self._firstFree < len(self._cells):
+            finish = ncols + self._firstFree
+            for start, cascade in enumerate(self._tableau):
+                if not cascade: continue
                 moves.append((start, finish,))
 
         #   2. Move from cascades to cascades
-        for start in range(ncols):
-            cascade = self._tableau[start]
+        for start, cascade in enumerate(self._tableau):
             if cascade:
                 moves.extend(self.enumerateFinishCascades(start, cascade[-1]))
 
         #   1. Move from cells to cascades
-        for cell in range(0, self._occupied):
-            moves.extend(self.enumerateFinishCascades(cell + ncols, self._cells[cell]))
+        for start, card in enumerate(self._cells):
+            if card != noCard:
+                moves.extend(self.enumerateFinishCascades(start + ncols, card))
 
         return moves
 
@@ -255,7 +270,7 @@ class Board:
         stack = []
 
         #   Move the aces
-        moves = self.coverFoundations()
+        moves = self.moveToFoundations()
         history.append(moves)
 
         #   Remember the starting position
@@ -271,7 +286,8 @@ class Board:
                 move = moves.pop()
                 self.moveCard(move, False)
 
-                moves = [move,].extend(self.coverFoundations())
+                moves = [move,]
+                moves.extend(self.moveToFoundations())
                 history.append(moves)
 
                 #   Are we done?

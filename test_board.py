@@ -200,49 +200,49 @@ Cells:
         #   Move to cell #1
         b.moveCard((0,8,))
         self.assertTrue(b._rehash)
-        self.assertEqual(1, b._occupied)
+        self.assertEqual(1, b._firstFree)
         self.assertEqual(6, len(b._tableau[0]))
 
         #   Move to cell #2
-        b.moveCard((0,8,))
+        b.moveCard((0,9,))
         self.assertTrue(b._rehash)
-        self.assertEqual(2, b._occupied)
+        self.assertEqual(2, b._firstFree)
         self.assertEqual(5, len(b._tableau[0]))
 
         #   Move to cell #3
-        b.moveCard((1,8,))
+        b.moveCard((1,10,))
         self.assertTrue(b._rehash)
-        self.assertEqual(3, b._occupied)
+        self.assertEqual(3, b._firstFree)
         self.assertEqual(6, len(b._tableau[1]))
 
         #   Move to cell #4
-        b.moveCard((2,8,))
+        b.moveCard((2,11,))
         self.assertTrue(b._rehash)
-        self.assertEqual(4, b._occupied)
+        self.assertEqual(4, b._firstFree)
         self.assertEqual(6, len(b._tableau[2]))
 
         #   Move to cascade #1
         b.moveCard((11,3,))
         self.assertTrue(b._rehash)
-        self.assertEqual(3, b._occupied)
+        self.assertEqual(3, b._firstFree)
         self.assertEqual(8, len(b._tableau[3]))
 
         #   Move to cascade #2
         b.moveCard((10,3,))
         self.assertTrue(b._rehash)
-        self.assertEqual(2, b._occupied)
+        self.assertEqual(2, b._firstFree)
         self.assertEqual(9, len(b._tableau[3]))
 
         #   Move to cascade #3
         b.moveCard((8,3,))
         self.assertTrue(b._rehash)
-        self.assertEqual(1, b._occupied)
+        self.assertEqual(0, b._firstFree)
         self.assertEqual(10, len(b._tableau[3]))
 
-        #   Move to cascade #3
-        b.moveCard((8,1,))
+        #   Move to cascade #4
+        b.moveCard((9,1,))
         self.assertTrue(b._rehash)
-        self.assertEqual(0, b._occupied)
+        self.assertEqual(0, b._firstFree)
         self.assertEqual(7, len(b._tableau[1]))
 
     def test_move_between_cascades_and_foundations(self):
@@ -253,7 +253,7 @@ Cells:
         b.moveCard((0,-1,))
         self.assertTrue(b._rehash)
         self.assertFalse(b._resort)
-        self.assertEqual(0, b._occupied)
+        self.assertEqual(0, b._firstFree)
         self.assertEqual(6, len(b._tableau[0]))
         self.assertEqual([0, board.noCard, board.noCard, board.noCard,], b._foundations)
 
@@ -262,7 +262,7 @@ Cells:
         b.moveCard((0,-4,))
         self.assertTrue(b._rehash)
         self.assertFalse(b._resort)
-        self.assertEqual(0, b._occupied)
+        self.assertEqual(0, b._firstFree)
         self.assertEqual(5, len(b._tableau[0]))
         self.assertEqual([0, board.noCard, board.noCard, 0,], b._foundations)
 
@@ -271,7 +271,7 @@ Cells:
         b.moveCard((0,-4,))
         self.assertTrue(b._rehash)
         self.assertFalse(b._resort)
-        self.assertEqual(0, b._occupied)
+        self.assertEqual(0, b._firstFree)
         self.assertEqual(4, len(b._tableau[0]))
         self.assertEqual([0, board.noCard, board.noCard, 1,], b._foundations)
 
@@ -280,7 +280,7 @@ Cells:
         b.moveCard((-4,0,), False)
         self.assertTrue(b._rehash)
         self.assertFalse(b._resort)
-        self.assertEqual(0, b._occupied)
+        self.assertEqual(0, b._firstFree)
         self.assertEqual(5, len(b._tableau[0]))
         self.assertEqual([0, board.noCard, board.noCard, 0,], b._foundations)
 
@@ -289,7 +289,7 @@ Cells:
         b.moveCard((-4,0,), False)
         self.assertTrue(b._rehash)
         self.assertFalse(b._resort)
-        self.assertEqual(0, b._occupied)
+        self.assertEqual(0, b._firstFree)
         self.assertEqual(6, len(b._tableau[0]))
         self.assertEqual([0, board.noCard, board.noCard, board.noCard,], b._foundations)
 
@@ -298,7 +298,7 @@ Cells:
         b.moveCard((-1,0,), False)
         self.assertTrue(b._rehash)
         self.assertFalse(b._resort)
-        self.assertEqual(0, b._occupied)
+        self.assertEqual(0, b._firstFree)
         self.assertEqual(7, len(b._tableau[0]))
         self.assertEqual([board.noCard, board.noCard, board.noCard, board.noCard,], b._foundations)
 
@@ -478,6 +478,11 @@ Cells:
 
     def test_backtrack_two_aces_two(self):
         self.assert_backtrack(two_aces_two)
+
+#     def test_solve(self):
+#         setup = board.Board(unshuffled)
+#         actual = setup.solve()
+#         self.assertEqual(-1, len(actual))
 
 if __name__ == '__main__':
     unittest.main()
