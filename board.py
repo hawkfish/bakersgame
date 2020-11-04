@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import copy
+
 noCard = -1
 
 suitChars = ['C', 'D', 'H', 'S', ]
@@ -23,7 +25,11 @@ def parseCard(cardStr):
     return makeCard(suit, pips)
 
 def parseDeck(deckStr):
-    return [parseCard(cardStr) for cardStr in deckStr.split()]
+    deck = [parseCard(cardStr) for cardStr in deckStr.split()]
+    cards = set()
+    for d, card in enumerate(deck):
+        assert card not in cards, f"Duplicate card {formatCard(card)} at position {d+1}"
+    return deck
 
 class Board:
     def __init__(self, deck):
@@ -88,6 +94,24 @@ class Board:
 
         return '\n'.join(result)
 
+    def isFoundationIndex(self, idx):
+        return idx < 0
+
+    def indexOfFoundation(self, cardSuit):
+        return -cardSuit - 1
+
+    def foundationOfIndex(self, idx):
+        return -idx - 1
+
+    def isCellIndex(self, idx):
+        return idx >= len(self._tableau)
+
+    def indexOfCell(self, cell):
+        return cell + len(self._tableau)
+
+    def cellOfIndex(self, idx):
+        return idx - len(self._tableau)
+
     def moveCard(self, move, validate = True):
         """Move a card at the start location to the finish
         location. Negative locations are the aces;
@@ -99,11 +123,10 @@ class Board:
         start, finish = move
 
         card = noCard
-        ncols = len(self._tableau)
 
         #   From a foundation
-        if start < 0:
-            foundation = -start - 1
+        if self.isFoundationIndex(start):
+            foundation = self.foundationOfIndex(start)
             if validate:
                 assert foundation < len(self._foundations), f"Move from invalid foundation {foundation}"
                 assert self._foundations[foundation] != noCard, f"Move from empty foundation {foundation}"
@@ -111,17 +134,9 @@ class Board:
             self._foundations[foundation] = cardPips - 1
             card = makeCard(foundation, cardPips)
 
-        #   From a cascade
-        elif start < ncols:
-            cascade = self._tableau[start]
-            if validate:
-                assert cascade, f"Move from empty cascade {start}"
-            card = cascade.pop()
-            if not cascade: self._resort = True
-
         #   From a cell
-        else:
-            cell = start - ncols
+        elif self.isCellIndex(start):
+            cell = self.cellOfIndex(start)
             if validate:
                 assert cell < len(self._cells), f"Move from invalid cell {cell}"
                 assert self._cells[cell] != noCard, f"Move from empty cell {cell}"
@@ -132,27 +147,29 @@ class Board:
             if self._firstFree > cell:
                 self._firstFree = cell
 
+        #   From a cascade
+        else:
+            cascade = self._tableau[start]
+            if validate:
+                assert cascade, f"Move from empty cascade {start}"
+            card = cascade.pop()
+            if not cascade: self._resort = True
+
+
         #   To a foundation
-        if finish < 0:
-            foundation = suit(card)
+        if self.isFoundationIndex(finish):
+            foundation = self.foundationOfIndex(finish)
             cardPips = pips(card)
             if validate:
                 assert foundation < len(self._foundations), f"Move to invalid foundation {foundation}"
+                assert foundation == suit(card), f"Move of {formatCard(card)} to the wrong foundation {foundation}"
                 assert self._foundations[foundation] == cardPips - 1, f"Move of {formatCard(card)} to foundation {foundation} not onto previous card {formatCard(makeCard(foundation, self._foundations[foundation]))}"
             self._foundations[foundation] = cardPips
 
-        #   To a cascade
-        elif finish < ncols:
-            cascade = self._tableau[finish]
-            if validate and cascade:
-                assert cascade[-1] == card + 1, f"Move of {formatCard(card)} to cascade {finish} not onto subsequent card {formatCard(cascade[-1])}"
-            if not cascade: self._resort = True
-            cascade.append(card)
-
         #   To a cell
-        else:
+        elif self.isCellIndex(finish):
             #   Insert into cell
-            cell = finish - ncols
+            cell = self.cellOfIndex(finish)
             if validate:
                 assert cell < len(self._cells), f"Move to invalid cell {cell}"
                 assert self._cells[cell] == noCard, f"Move to occupied cell {formatCard(self._cells[cell])}"
@@ -165,6 +182,14 @@ class Board:
                     if self._cells[self._firstFree] == noCard:
                         break
                     self._firstFree += 1
+
+        #   To a cascade
+        else:
+            cascade = self._tableau[finish]
+            if validate and cascade:
+                assert cascade[-1] == card + 1, f"Move of {formatCard(card)} to cascade {finish} not onto subsequent card {formatCard(cascade[-1])}"
+            if not cascade: self._resort = True
+            cascade.append(card)
 
         #   Need to rehash after moving
         self._rehash = True
@@ -180,6 +205,19 @@ class Board:
         moved = 1
         while moved != len(moves):
             moved = len(moves)
+
+            for cell, card in enumerate(self._cells):
+                if card == noCard: continue
+
+                cardSuit = suit(card)
+                cardPips = pips(card)
+
+                #   Can we remove it?
+                if self._foundations[cardSuit] == cardPips - 1:
+                    start = self.indexOfCell(cell)
+                    finish = self.indexOfFoundation(cardSuit)
+                    moves.append(self.moveCard((start, finish, ), False))
+
             for start, cascade in enumerate(self._tableau):
                 while cascade:
                     card = cascade[-1]
@@ -188,7 +226,8 @@ class Board:
                     #   Can we remove it?
                     if self._foundations[cardSuit] != cardPips - 1: break
 
-                    moves.append(self.moveCard((start, -cardSuit - 1,), False))
+                    finish = self.indexOfFoundation(cardSuit)
+                    moves.append(self.moveCard((start, finish, ), False))
 
         return moves
 
@@ -212,14 +251,13 @@ class Board:
     def enumerateMoves(self):
         """Enumerate all the legal moves that can be made."""
         moves = []
-        ncols = len(self._tableau)
 
         #   Build the list in reverse order
         #   because we will pop choices from the back.
 
         #   3. Move from cascades to the first open cell
         if self._firstFree < len(self._cells):
-            finish = ncols + self._firstFree
+            finish = self.indexOfCell(self._firstFree)
             for start, cascade in enumerate(self._tableau):
                 if not cascade: continue
                 moves.append((start, finish,))
@@ -232,7 +270,7 @@ class Board:
         #   1. Move from cells to cascades
         for start, card in enumerate(self._cells):
             if card != noCard:
-                moves.extend(self.enumerateFinishCascades(start + ncols, card))
+                moves.extend(self.enumerateFinishCascades(self.indexOfCell(start), card))
 
         return moves
 
@@ -261,23 +299,45 @@ class Board:
             finish, start = moves.pop()
             self.moveCard((start, finish,), False)
 
+    def check(self):
+        cards = set()
+
+        for cardSuit, top in enumerate(self._foundations):
+            for cardPips in range(top):
+                cards.add(makeCard(cardSuit, cardPips))
+
+        for cell, card in enumerate(self._cells):
+            assert card not in cards, f"Duplicate card {formatCard(card)} in cell {cell}"
+            if card != noCard: cards.add(card)
+
+        for column, cascade in enumerate(self._tableau):
+            for row, card in enumerate(cascade):
+                assert card not in cards, f"Duplicate card {formatCard(card)} in cascade {column}, row {row}"
+
+                cards.add(card)
+
+        #assert len(cards) == 52, str(self)
+
     def solve(self):
         """Finds the first solution of the board using a depth first search."""
-        history = []
+        solution = []
 
         #   Search state
         visited = set()
         stack = []
+        history = []
 
         #   Move the aces
         moves = self.moveToFoundations()
         history.append(moves)
+        if self.solved(): solution = history
 
         #   Remember the starting position
         visited.add(self.memento())
 
-        #   Add the first level
-        stack.append(self.enumerateMoves())
+        #   Add the first level, if any
+        level = self.enumerateMoves()
+        if level: stack.append(level)
         while stack:
             #   We always remove from the backs of lists
             #   to avoid copying
@@ -291,7 +351,16 @@ class Board:
                 history.append(moves)
 
                 #   Are we done?
-                if self.solved(): return history
+                if self.solved():
+                    #   Keep the shortest
+                    if not solution or len(solution) > len(history):
+                        # print( len(history), len(visited) )
+                        solution = history
+                        break
+
+                    #   Nowhere else to go
+                    self.backtrack(history.pop())
+                    continue
 
                 #   Check whether we have been here before
                 memento = self.memento()
@@ -302,8 +371,13 @@ class Board:
                 else:
                     #   Remember this position
                     visited.add(memento)
-                    #   Go down one level
-                    stack.append(self.enumerateMoves())
+                    #   Go down one level, if we can
+                    level = self.enumerateMoves()
+                    if level:
+                        stack.append(level)
+                    else:
+                        self.backtrack(history.pop())
+
 
             else:
                 #   Go up one level
@@ -312,7 +386,7 @@ class Board:
                 self.backtrack(history.pop())
 
         #   Empty stack => empty history
-        return history
+        return solution
 
 if __name__ == '__main__':
     b = Board(range(0,52))

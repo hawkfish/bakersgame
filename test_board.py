@@ -1,3 +1,4 @@
+import copy
 import unittest
 
 import board
@@ -19,9 +20,9 @@ QS QD 4D 3C AS 5H 7H QH
 
 two_aces = board.parseDeck("""
 KH 2H 4D QC 3S 7D 7S KD
-JD 4H 2C 7C 9H KS 7H 5D
+JD 4H 3C 7C 9H KS 7H 5D
 6S AC QS TD JC 9C JH KC
-9S 4C QH 2D 4C AH TS 8H
+9S 4S QH 2D 4C AD TS 8H
 TH 2S JS 6C 9D 3D 8D TC
 2C 5H 8C 5S 3H 6H 8S 6D
 AH 5C QD AS
@@ -148,9 +149,9 @@ Cells:
 
 Table:
 KH 2H 4D QC 3S 7D 7S KD
-JD 4H 2C 7C 9H KS 7H 5D
+JD 4H 3C 7C 9H KS 7H 5D
 6S AC QS TD JC 9C JH KC
-9S 4C QH 2D 4C AH TS 8H
+9S 4S QH 2D 4C AD TS 8H
 TH 2S JS 6C 9D 3D 8D TC
 2C 5H 8C 5S 3H 6H 8S 6D
 AH 5C QD AS -- -- -- --
@@ -193,6 +194,21 @@ Cells:
         actual = setup.moveToFoundations()
         self.assertTrue(setup._rehash)
         self.assertTrue(setup._resort)
+
+    def test_move_to_foundations_cell(self):
+        setup = board.Board(unshuffled)
+
+        # One king in a cell
+        for cascade in setup._tableau: cascade.clear()
+
+        king = 12
+        queen = king - 1
+        clubs = 0
+        setup._cells = [ board.noCard, board.makeCard(clubs, king), board.noCard, board.noCard, ]
+        setup._foundations = [queen, king, king, king, ]
+        expected = [(9, -1,),]
+        actual = setup.moveToFoundations()
+        self.assertEqual(expected, actual)
 
     def test_move_between_cascades_and_cells(self):
         b = board.Board(unshuffled)
@@ -479,10 +495,39 @@ Cells:
     def test_backtrack_two_aces_two(self):
         self.assert_backtrack(two_aces_two)
 
-#     def test_solve(self):
-#         setup = board.Board(unshuffled)
-#         actual = setup.solve()
-#         self.assertEqual(-1, len(actual))
+    def assert_solve(self, setup, expected, display = False):
+        b = board.Board(setup)
+        solution = b.solve()
+        actual = len(solution)
+        self.assertEqual(expected, actual)
+        if display:
+            forward = []
+            while solution:
+                moves = solution.pop()
+                forward.append(copy.copy(moves))
+                b.backtrack(moves)
+            forward.reverse()
+            for moves in forward:
+                print(moves)
+                for move in moves:
+                    b.moveCard(move, False)
+                print(b)
+
+
+    def test_solve_unshuffled(self):
+        self.assert_solve(unshuffled, 4871)
+
+    def test_solve_reversed(self):
+        self.assert_solve(reversed, 1)
+
+    def test_solve_no_aces(self):
+        self.assert_solve(no_aces, 8230, False)
+
+    def test_solve_two_aces(self):
+        self.assert_solve(two_aces, 100, False)
+
+    def test_solve_two_aces_two(self):
+        self.assert_solve(two_aces_two, 312)
 
 if __name__ == '__main__':
     unittest.main()
