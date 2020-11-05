@@ -1,4 +1,3 @@
-import copy
 import unittest
 
 import board
@@ -504,7 +503,7 @@ Cells:
             forward = []
             while solution:
                 moves = solution.pop()
-                forward.append(copy.copy(moves))
+                forward.append(moves.copy())
                 b.backtrack(moves)
             forward.reverse()
             for moves in forward:

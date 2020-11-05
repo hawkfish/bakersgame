@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-import copy
-
 noCard = -1
 
 suitChars = ['C', 'D', 'H', 'S', ]
