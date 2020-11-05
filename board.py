@@ -16,8 +16,11 @@ def suit(card):
 def pips(card):
     return card % 13
 
+def formatPips(suit, pips):
+    return pipsChars[pips + 1] + suitChars[suit]
+
 def formatCard(card):
-    return pipsChars[pips(card) + 1] + suitChars[suit(card)]
+    return formatPips( suit(card), pips(card) ) if card != noCard else '--'
 
 def parseCard(cardStr):
     pips = pipsChars.index(cardStr[0]) - 1
@@ -66,29 +69,25 @@ class Board:
         #   Aces stacks across the top
         result.append('Aces:')
         row = []
-        for suit in range(len(self._foundations)):
-            row.append(pipsChars[self._foundations[suit] + 1] + suitChars[suit] )
+        for suit, pips in enumerate(self._foundations):
+            row.append( formatPips( suit, pips ) )
         row.reverse()
         result.append(' '.join(row))
         result.append('')
 
         #   Columns in the middle
         result.append('Table:')
-        r = 0
-        while(1):
-            moreRows = max([r < len(cascade) for cascade in self._tableau])
-            if not moreRows: break
-
+        rows = max([len(cascade) for cascade in self._tableau])
+        for r in range(rows):
             row = []
             for cascade in self._tableau:
-                row.append(formatCard(cascade[r]) if r < len(cascade) else '--')
+                row.append(formatCard(cascade[r] if r < len(cascade) else noCard))
             result.append(' '.join(row))
-            r = r + 1
         result.append('')
 
         #    Cells at the bottom
         result.append('Cells:')
-        row = [formatCard(cell) if cell != noCard else '--' for cell in self._cells]
+        row = [formatCard(card) for card in self._cells]
         result.append(' '.join(row))
         result.append('')
 
@@ -202,7 +201,7 @@ class Board:
         This list should be treated as a single unit."""
         moves = []
 
-        moved = 1
+        moved = len(moves) - 1
         while moved != len(moves):
             moved = len(moves)
 
@@ -216,7 +215,7 @@ class Board:
                 if self._foundations[cardSuit] == cardPips - 1:
                     start = self.indexOfCell(cell)
                     finish = self.indexOfFoundation(cardSuit)
-                    moves.append(self.moveCard((start, finish, ), False))
+                    moves.append( self.moveCard( (start, finish, ) ) )
 
             for start, cascade in enumerate(self._tableau):
                 while cascade:
@@ -227,7 +226,7 @@ class Board:
                     if self._foundations[cardSuit] != cardPips - 1: break
 
                     finish = self.indexOfFoundation(cardSuit)
-                    moves.append(self.moveCard((start, finish, ), False))
+                    moves.append( self.moveCard( (start, finish, ), ) )
 
         return moves
 
@@ -299,11 +298,11 @@ class Board:
             finish, start = moves.pop()
             self.moveCard((start, finish,), False)
 
-    def check(self):
+    def checkCards(self):
         cards = set()
 
-        for cardSuit, top in enumerate(self._foundations):
-            for cardPips in range(top):
+        for cardSuit, topPips in enumerate(self._foundations):
+            for cardPips in range(topPips):
                 cards.add(makeCard(cardSuit, cardPips))
 
         for cell, card in enumerate(self._cells):
