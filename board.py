@@ -109,6 +109,17 @@ class Board:
     def cellOfIndex(self, idx):
         return idx - len(self._tableau)
 
+    def cardOfIndex(self, idx):
+        if self.isCellIndex( idx ) :
+            return self._cells[self.cellOfIndex( idx )]
+
+        elif self.isFoundationIndex( idx ):
+            cardSuit = foundationOfIndex( idx )
+            return makeCard( cardSuit, self._foundations[ cardSuit ] )
+
+        else:
+            return self._tableau[idx][-1]
+
     def moveCard(self, move, validate = True):
         """Move a card at the start location to the finish
         location. Negative locations are the aces;
@@ -315,8 +326,10 @@ class Board:
 
         #assert len(cards) == 52, str(self)
 
-    def solve(self):
-        """Finds the first solution of the board using a depth first search."""
+    def solve(self, callback = None ):
+        """Finds the first solution of the board using a depth first search.
+        If a callback is provided, it will be given the board, solution and visited hash set
+        and should return True to keep searching for shorter solutions, False to terminate."""
         solution = []
 
         #   Search state
@@ -347,13 +360,15 @@ class Board:
                 moves.extend(self.moveToFoundations())
                 history.append(moves)
 
+                tooLong = ( solution and len(solution) <= len(history) )
+
                 #   Are we done?
                 if self.solved():
                     #   Keep the shortest
-                    if not solution or len(solution) > len(history):
-                        # print( len(history), len(visited) )
-                        solution = history
-                        break
+                    if not tooLong:
+                        solution = history.copy()
+                        if not callback or not callback(board=self, solution=solution, visited=visited):
+                            break
 
                     #   Nowhere else to go
                     self.backtrack(history.pop())
@@ -361,7 +376,7 @@ class Board:
 
                 #   Check whether we have been here before
                 memento = self.memento()
-                if memento in visited:
+                if memento in visited or tooLong:
                     #   Abort this level if we have been here before
                     self.backtrack(history.pop())
 
