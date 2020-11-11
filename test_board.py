@@ -516,19 +516,19 @@ Cells:
 
 
     def test_solve_unshuffled(self):
-        self.assert_solve(unshuffled, 4871)
+        self.assert_solve(unshuffled, 2099)
 
     def test_solve_reversed(self):
         self.assert_solve(reversed, 1)
 
     def test_solve_no_aces(self):
-        self.assert_solve(no_aces, 8230, False)
+        self.assert_solve(no_aces, 1445, False)
 
     def test_solve_two_aces(self):
-        self.assert_solve(two_aces, 100, False)
+        self.assert_solve(two_aces, 117, False)
 
     def test_solve_two_aces_two(self):
-        self.assert_solve(two_aces_two, 312)
+        self.assert_solve(two_aces_two, 211)
 
 if __name__ == '__main__':
     unittest.main()

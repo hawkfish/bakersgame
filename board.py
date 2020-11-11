@@ -270,15 +270,15 @@ class Board:
                 if not cascade: continue
                 moves.append((start, finish,))
 
-        #   2. Move from cascades to cascades
-        for start, cascade in enumerate(self._tableau):
-            if cascade:
-                moves.extend(self.enumerateFinishCascades(start, cascade[-1]))
-
-        #   1. Move from cells to cascades
+        #   2. Move from cells to cascades
         for start, card in enumerate(self._cells):
             if card != noCard:
                 moves.extend(self.enumerateFinishCascades(self.indexOfCell(start), card))
+
+        #   1. Move from cascades to cascades
+        for start, cascade in enumerate(self._tableau):
+            if cascade:
+                moves.extend(self.enumerateFinishCascades(start, cascade[-1]))
 
         return moves
 
