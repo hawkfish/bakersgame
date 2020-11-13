@@ -64,10 +64,13 @@ def playSolution(deck, solution):
     for turn in solution:
         if not turn: continue
 
+        print( "*" * 23 )
         print( b )
         sys.stdout.write( '> ' )
         sys.stdout.flush()
-        sys.stdin.readline()
+        cmd = sys.stdin.readline().strip()
+        if cmd == 'q': return False
+        elif cmd == 'r': return True
 
         formatted = []
         for move in turn:
@@ -76,6 +79,8 @@ def playSolution(deck, solution):
         print( ", ".join( formatted ) )
 
     print( "Finished!")
+
+    return True
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Plays Baker's Game at the console")
@@ -91,5 +96,7 @@ if __name__ == '__main__':
             playSolution( deck, solution )
 
     else:
-        deck, solution = generateSolvableBoard( args.solutions[0] )
-        playSolution(deck, solution)
+        playing = True
+        while( playing ):
+            deck, solution = generateSolvableBoard( args.solutions[0] )
+            playing = playSolution(deck, solution)
