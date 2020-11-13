@@ -21,6 +21,8 @@ def formatCard(card):
     return formatPips( suit(card), pips(card) ) if card != noCard else '--'
 
 def parseCard(cardStr):
+    if cardStr == '--': return noCard
+
     pips = pipsChars.index(cardStr[0]) - 1
     suit = suitChars.index(cardStr[1])
     return makeCard(suit, pips)
@@ -31,6 +33,9 @@ def parseDeck(deckStr):
     for d, card in enumerate(deck):
         assert card not in cards, f"Duplicate card {formatCard(card)} at position {d+1}"
     return deck
+
+def isStacked( cascade ):
+    return len(cascade) > 1 and cascade[-1] == cascade[-2] - 1
 
 class Board:
     def __init__(self, deck):
@@ -247,7 +252,7 @@ class Board:
 
             if cascade:
                 under = cascade[-1]
-                #   We can't put a king on an ace because
+                #   We can't stack a king on an ace because
                 #   exposed aces are always removed first
                 if under == card + 1:
                     moves.append((start, finish,))
@@ -258,27 +263,48 @@ class Board:
 
     def enumerateMoves(self):
         """Enumerate all the legal moves that can be made."""
-        moves = []
+
+        #   3. Move from cascades to the first open cell
+        stacked_to_cell = []        #   Stacked card to free cell
+        isolate_to_cell = []        #   Isolate card to free cell
+        if self._firstFree < len(self._cells):
+            finish = self.indexOfCell(self._firstFree)
+            for start, cascade in enumerate(self._tableau):
+                if not cascade:
+                    continue
+
+                elif isStacked( cascade ):
+                    stacked_to_cell.append( (start, finish,) )
+
+                else:
+                    isolate_to_cell.append( (start, finish,) )
+
+        #   2. Move from cells to cascades
+        cell_to_cascade = []        #   Cell card to any cascade
+        for start, card in enumerate(self._cells):
+            if card != noCard:
+                cell_to_cascade.extend(self.enumerateFinishCascades(self.indexOfCell(start), card))
+
+        #   1. Move from cascades to cascades
+        stacked_to_open = []        #   Stacked card to open cascade
+        isolate_to_cascade = []     #   Isolate card to any cascade
+        for start, cascade in enumerate(self._tableau):
+            if cascade:
+                finishes = self.enumerateFinishCascades(start, cascade[-1])
+                if isStacked( cascade ):
+                    stacked_to_open.extend( finishes )
+                else:
+                    isolate_to_cascade.extend( finishes )
 
         #   Build the list in reverse order
         #   because we will pop choices from the back.
 
-        #   3. Move from cascades to the first open cell
-        if self._firstFree < len(self._cells):
-            finish = self.indexOfCell(self._firstFree)
-            for start, cascade in enumerate(self._tableau):
-                if not cascade: continue
-                moves.append((start, finish,))
-
-        #   2. Move from cells to cascades
-        for start, card in enumerate(self._cells):
-            if card != noCard:
-                moves.extend(self.enumerateFinishCascades(self.indexOfCell(start), card))
-
-        #   1. Move from cascades to cascades
-        for start, cascade in enumerate(self._tableau):
-            if cascade:
-                moves.extend(self.enumerateFinishCascades(start, cascade[-1]))
+        moves = []
+        moves.extend( stacked_to_cell )
+        moves.extend( isolate_to_cell )
+        moves.extend( cell_to_cascade )
+        moves.extend( stacked_to_open )
+        moves.extend( isolate_to_cascade )
 
         return moves
 

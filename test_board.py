@@ -362,11 +362,12 @@ Cells:
             cascade.clear()
             if start: cascade.append(start)
 
-        #   Every card can move to the left or the next cascade
+        #   Every card can move to the leftmost or the next cascade
         for start, cascade in enumerate(setup._tableau):
             if cascade:
                 actual = setup.enumerateFinishCascades(start, cascade[-1])
-                expected = [(start, 0,),]
+                expected = []
+                expected.append( (start, 0,) )
                 if start + 1 < len(setup._tableau):
                     expected.append( (start, start + 1,) )
                 self.assertEqual(expected, actual)
@@ -428,12 +429,62 @@ Cells:
         #   First move options - cells only
         expected = [(start, width,) for start in range(width)]
         actual = setup.enumerateMoves()
-        self.assertEqual(expected, actual)
+        self.assertEqual( expected, actual )
 
         #   Uncover QH
         setup.moveCard( (3, width,) )
         expected = [(start, width + 1,) for start in range(width)]
         expected.append( (3, 6,) )
+        actual = setup.enumerateMoves()
+        self.assertEqual(expected, actual)
+
+    def test_enumerate_moves_keep_sequences(self):
+        setup = board.Board(unshuffled)
+
+        setup._foundations = [8, 6, 8, 7, ]
+        cascades = ( "TC 9C", "7H 9S 9D KH QH JH TH", "QC", "QD JD TD", "8C KD", "9H 8H", "KS QS JS", "",)
+        for t, s in enumerate( cascades ):
+            setup._tableau[ t ] = board.parseDeck( s )
+        setup._cells = board.parseDeck( "KC TS JC --" )
+        setup._firstFree = 3
+
+        #   Validate stacking
+        stacked = (0, 1, 3, 5, 6, )
+        for c in stacked: self.assertTrue( board.isStacked( setup._tableau[ c ] ) )
+        isolate = (2, 4, )
+        for c in isolate: self.assertFalse( board.isStacked( setup._tableau[ c ] ) )
+        opens = (7, )
+        for c in opens: self.assertFalse( board.isStacked( setup._tableau[ c ] ) )
+
+        expected = []
+
+        #   Move stacked cascades to open cell
+        expected.extend( [ (start, 11, ) for start in stacked ] )
+
+        #   Move isolate cascades to open cell
+        expected.extend( [ (start, 11, ) for start in isolate ] )
+
+       #   Move cell 1 to open cascade
+        expected.append( ( 8, 7, ) )
+
+        #   Move cell 2 to stack
+        expected.append( ( 9, 6, ) )
+
+        #   Move cell 2 to open cascade
+        expected.append( ( 9, 7, ) )
+
+        #   Move cell 3 to stack
+        expected.append( ( 10, 2, ) )
+
+        #   Move cell 3 to open cascade
+        expected.append( ( 10, 7, ) )
+
+        #   Move stacked cascades to open cascade
+        expected.extend( [ (start, 7, ) for start in stacked ] )
+
+        #   Move isolate cascades to open cascade
+        expected.extend( [ (start, 7, ) for start in isolate ] )
+
         actual = setup.enumerateMoves()
         self.assertEqual(expected, actual)
 
@@ -516,19 +567,19 @@ Cells:
 
 
     def test_solve_unshuffled(self):
-        self.assert_solve(unshuffled, 2099)
+        self.assert_solve(unshuffled, 1560)
 
     def test_solve_reversed(self):
         self.assert_solve(reversed, 1)
 
     def test_solve_no_aces(self):
-        self.assert_solve(no_aces, 1445, False)
+        self.assert_solve(no_aces, 555, False)
 
     def test_solve_two_aces(self):
-        self.assert_solve(two_aces, 117, False)
+        self.assert_solve(two_aces, 136, False)
 
     def test_solve_two_aces_two(self):
-        self.assert_solve(two_aces_two, 211)
+        self.assert_solve(two_aces_two, 69)
 
 if __name__ == '__main__':
     unittest.main()
