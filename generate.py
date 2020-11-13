@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import argparse
 import random
 import sys
 
@@ -22,7 +23,7 @@ def formatMove( b, move ):
 
     return f"{board.formatCard(card)}: {formatIndex( b, start)} => {formatIndex( b, finish )}"
 
-def onSolved( solutions = 1000 ):
+def onSolved( solutions = 100 ):
     untried = solutions
 
     def callback(*args, **kwargs):
@@ -32,7 +33,7 @@ def onSolved( solutions = 1000 ):
             print()
             return False
 
-        elif 0 == ( untried % 100):
+        elif 0 == ( untried % (solutions/10) ):
             sys.stdout.write('.')
             sys.stdout.flush()
 
@@ -40,7 +41,7 @@ def onSolved( solutions = 1000 ):
 
     return callback
 
-def generateSolvableBoard( solutions = 1000 ):
+def generateSolvableBoard( solutions = 1 ):
     attempt = 0
     while True:
         deck = [*range(0,52)]
@@ -53,10 +54,16 @@ def generateSolvableBoard( solutions = 1000 ):
             print( f"Found a {len(solution)} move game after {attempt} attempt{plural}" )
             return (deck, solution, )
 
-if __name__ == '__main__':
-    deck, solution = generateSolvableBoard()
+def playSolution(deck, solution):
     b = board.Board( deck )
+    if not solution:
+        print( b )
+        print("Unsolvable!")
+        return
+
     for turn in solution:
+        if not turn: continue
+
         print( b )
         sys.stdout.write( '> ' )
         sys.stdout.flush()
@@ -68,3 +75,21 @@ if __name__ == '__main__':
             b.moveCard( move, False )
         print( ", ".join( formatted ) )
 
+    print( "Finished!")
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Plays Baker's Game at the console")
+    parser.add_argument('files', metavar='file', type=str, nargs='*', help="Deck files to read and play.")
+    parser.add_argument('--solutions, -s', dest='solutions', nargs=1, type=int, default=1, help="The number of solutions to try when solving")
+    args = parser.parse_args()
+
+    if args.files:
+        for filename in args.files:
+            deck = board.parseDeck( file( filename, "rb" ).read() )
+            b = board.Board(deck)
+            solution = b.solve( onSolved( args.solutions[0] ) )
+            playSolution( deck, solution )
+
+    else:
+        deck, solution = generateSolvableBoard( args.solutions[0] )
+        playSolution(deck, solution)
