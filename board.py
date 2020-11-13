@@ -2,6 +2,9 @@
 
 noCard = -1
 
+king = 12
+ace = 0
+
 suitChars = ['C', 'D', 'H', 'S', ]
 pipsChars = ['-', 'A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', ]
 
@@ -36,6 +39,19 @@ def parseDeck(deckStr):
 
 def isStacked( cascade ):
     return len(cascade) > 1 and cascade[-1] == cascade[-2] - 1
+
+def isKingStack( cascade ):
+    if not cascade: return False
+
+    prev = cascade[0]
+    if pips( prev ) != king: return False
+
+    for row, card in enumerate( cascade ):
+        if not row: continue
+        if prev != card + 1: return False
+        prev = card
+
+    return True
 
 class Board:
     def __init__(self, deck):
@@ -267,14 +283,19 @@ class Board:
         #   3. Move from cascades to the first open cell
         stacked_to_cell = []        #   Stacked card to free cell
         isolate_to_cell = []        #   Isolate card to free cell
+        openCells = 0
         if self._firstFree < len(self._cells):
+            for card in self._cells: openCells += ( card == noCard )
+
             finish = self.indexOfCell(self._firstFree)
             for start, cascade in enumerate(self._tableau):
                 if not cascade:
                     continue
 
                 elif isStacked( cascade ):
-                    stacked_to_cell.append( (start, finish,) )
+                    #   If the stack is anchored on a king, don't move anything
+                    if openCells >= len( cascade ) or not isKingStack( cascade ):
+                        stacked_to_cell.append( (start, finish,) )
 
                 else:
                     isolate_to_cell.append( (start, finish,) )
@@ -292,7 +313,8 @@ class Board:
             if cascade:
                 finishes = self.enumerateFinishCascades(start, cascade[-1])
                 if isStacked( cascade ):
-                    stacked_to_open.extend( finishes )
+                    if openCells >= len( cascade ) or not isKingStack( cascade ):
+                        stacked_to_open.extend( finishes )
                 else:
                     isolate_to_cascade.extend( finishes )
 

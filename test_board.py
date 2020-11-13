@@ -460,6 +460,7 @@ Cells:
 
         #   Move stacked cascades to open cell
         expected.extend( [ (start, 11, ) for start in stacked ] )
+        expected.pop()
 
         #   Move isolate cascades to open cell
         expected.extend( [ (start, 11, ) for start in isolate ] )
@@ -481,6 +482,7 @@ Cells:
 
         #   Move stacked cascades to open cascade
         expected.extend( [ (start, 7, ) for start in stacked ] )
+        expected.pop()
 
         #   Move isolate cascades to open cascade
         expected.extend( [ (start, 7, ) for start in isolate ] )
@@ -567,7 +569,7 @@ Cells:
 
 
     def test_solve_unshuffled(self):
-        self.assert_solve(unshuffled, 1560)
+        self.assert_solve(unshuffled, 958)
 
     def test_solve_reversed(self):
         self.assert_solve(reversed, 1)
@@ -576,10 +578,10 @@ Cells:
         self.assert_solve(no_aces, 555, False)
 
     def test_solve_two_aces(self):
-        self.assert_solve(two_aces, 136, False)
+        self.assert_solve(two_aces, 86, False)
 
     def test_solve_two_aces_two(self):
-        self.assert_solve(two_aces_two, 69)
+        self.assert_solve(two_aces_two, 72)
 
 if __name__ == '__main__':
     unittest.main()
