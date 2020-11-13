@@ -80,7 +80,7 @@ def playSolution(deck, solution):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Plays Baker's Game at the console")
     parser.add_argument('files', metavar='file', type=str, nargs='*', help="Deck files to read and play.")
-    parser.add_argument('--solutions, -s', dest='solutions', nargs=1, type=int, default=1, help="The number of solutions to try when solving")
+    parser.add_argument('--solutions, -s', dest='solutions', nargs=1, type=int, default=[1], help="The number of solutions to try when solving")
     args = parser.parse_args()
 
     if args.files:
