@@ -57,12 +57,16 @@ def generateSolvableBoard( improvements = 1 ):
             print( f"Found a {len(solution)} move game after {attempt} attempt{plural}" )
             return (deck, solution, )
 
-def playSolution(deck, solution):
+def playSolution( deck, solution, name = 'Generated' ):
     b = board.Board( deck )
+
+    print( f"Solving {name} deal" )
+
     if not solution:
+        print( "*" * 23 )
         print( b )
-        print("Unsolvable!")
-        return
+        print( "Unsolvable!" )
+        return True
 
     for turn in solution:
         if not turn: continue
@@ -73,7 +77,7 @@ def playSolution(deck, solution):
         sys.stdout.flush()
         cmd = sys.stdin.readline().strip()
         if cmd == 'q': return False
-        elif cmd == 'r': return True
+        elif cmd == 'n': break
 
         formatted = []
         for move in turn:
@@ -81,7 +85,7 @@ def playSolution(deck, solution):
             b.moveCard( move, False )
         print( ", ".join( formatted ) )
 
-    print( "Finished!")
+    print( f"Finished {name}!")
 
     return True
 
@@ -94,11 +98,15 @@ if __name__ == '__main__':
 
     if args.files:
         for filename in args.files:
-            deck = board.parseDeck( open( filename, "r" ).read() )
+            try:
+                deck = board.parseDeck( open( filename, "r" ).read() )
+            except AssertionError as msg:
+                print( f"Unable to parse file {filename}:", str( msg ) )
+                raise
+
             b = board.Board(deck)
             solution = b.solve( onSolved( args.improvements ), args.validate )
-            playSolution( deck, solution )
-
+            playSolution( deck, solution, filename )
     else:
         playing = True
         while( playing ):
