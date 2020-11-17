@@ -50,7 +50,7 @@ def generateSolvableBoard( improvements = 1 ):
         deck = [*range(0,52)]
         random.shuffle(deck)
         b = board.Board(deck)
-        solution = b.solve( onSolved( solutions ) )
+        solution = b.solve( onSolved( improvements ) )
         attempt = attempt + 1
         if b.solved():
             plural = "s" if attempt != 1 else ""
@@ -64,7 +64,6 @@ def playSolution(deck, solution):
         print("Unsolvable!")
         return
 
-    print( f"Found a {len(solution)} move solution" )
     for turn in solution:
         if not turn: continue
 
@@ -89,19 +88,19 @@ def playSolution(deck, solution):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Plays Baker's Game at the console")
     parser.add_argument( 'files', metavar='file', type=str, nargs='*', help="Deck files to read and play.")
-    parser.add_argument( '-i', '--improve', dest='improvements', nargs=1, type=int, default=[1], help="The number of improvements to try when solving")
-    parser.add_argument( '-v', '--validate, -v', dest='validate', action="store_true", help="Validate each move")
+    parser.add_argument( '-i', '--improve', dest='improvements', type=int, default=1, help="The number of improvements to try when solving")
+    parser.add_argument( '-v', '--validate', dest='validate', action="store_true", help="Validate each move")
     args = parser.parse_args()
 
     if args.files:
         for filename in args.files:
             deck = board.parseDeck( open( filename, "r" ).read() )
             b = board.Board(deck)
-            solution = b.solve( onSolved( args.improvements[0] ), args.validate )
+            solution = b.solve( onSolved( args.improvements ), args.validate )
             playSolution( deck, solution )
 
     else:
         playing = True
         while( playing ):
-            deck, solution = generateSolvableBoard( args.improvements[0] )
+            deck, solution = generateSolvableBoard( args.improvements )
             playing = playSolution(deck, solution)
