@@ -23,17 +23,20 @@ def formatMove( b, move ):
 
     return f"{board.formatCard(card)}: {formatIndex( b, start)} => {formatIndex( b, finish )}"
 
-def onSolved( solutions = 100 ):
-    untried = solutions
+def onSolved( improvements = 100 ):
+    untried = improvements
 
     def callback(*args, **kwargs):
+        b = kwargs['board']
+        if not b.solved(): return True
+
         nonlocal untried
         untried = untried - 1
         if untried < 1:
             print()
             return False
 
-        elif 0 == ( untried % (solutions/10) ):
+        elif 0 == ( untried % (improvements/10) ):
             sys.stdout.write('.')
             sys.stdout.flush()
 
@@ -41,7 +44,7 @@ def onSolved( solutions = 100 ):
 
     return callback
 
-def generateSolvableBoard( solutions = 1 ):
+def generateSolvableBoard( improvements = 1 ):
     attempt = 0
     while True:
         deck = [*range(0,52)]
@@ -61,6 +64,7 @@ def playSolution(deck, solution):
         print("Unsolvable!")
         return
 
+    print( f"Found a {len(solution)} move solution" )
     for turn in solution:
         if not turn: continue
 
@@ -84,19 +88,20 @@ def playSolution(deck, solution):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Plays Baker's Game at the console")
-    parser.add_argument('files', metavar='file', type=str, nargs='*', help="Deck files to read and play.")
-    parser.add_argument('--solutions, -s', dest='solutions', nargs=1, type=int, default=[1], help="The number of solutions to try when solving")
+    parser.add_argument( 'files', metavar='file', type=str, nargs='*', help="Deck files to read and play.")
+    parser.add_argument( '-i', '--improve', dest='improvements', nargs=1, type=int, default=[1], help="The number of improvements to try when solving")
+    parser.add_argument( '-v', '--validate, -v', dest='validate', action="store_true", help="Validate each move")
     args = parser.parse_args()
 
     if args.files:
         for filename in args.files:
-            deck = board.parseDeck( file( filename, "rb" ).read() )
+            deck = board.parseDeck( open( filename, "r" ).read() )
             b = board.Board(deck)
-            solution = b.solve( onSolved( args.solutions[0] ) )
+            solution = b.solve( onSolved( args.improvements[0] ), args.validate )
             playSolution( deck, solution )
 
     else:
         playing = True
         while( playing ):
-            deck, solution = generateSolvableBoard( args.solutions[0] )
+            deck, solution = generateSolvableBoard( args.improvements[0] )
             playing = playSolution(deck, solution)

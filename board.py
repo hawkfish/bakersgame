@@ -26,15 +26,21 @@ def formatCard(card):
 def parseCard(cardStr):
     if cardStr == '--': return noCard
 
-    pips = pipsChars.index(cardStr[0]) - 1
-    suit = suitChars.index(cardStr[1])
-    return makeCard(suit, pips)
+    try:
+        pips = pipsChars.index(cardStr[0]) - 1
+        suit = suitChars.index(cardStr[1])
+        return makeCard(suit, pips)
+
+    except:
+        print( cardStr[0], cardStr[1] )
+        raise
 
 def parseDeck(deckStr):
     deck = [parseCard(cardStr) for cardStr in deckStr.split()]
     cards = set()
     for d, card in enumerate(deck):
         assert card not in cards, f"Duplicate card {formatCard(card)} at position {d+1}"
+        cards.add( card )
     return deck
 
 def isStacked( cascade ):
@@ -141,7 +147,28 @@ class Board:
         else:
             return self._tableau[idx][-1]
 
-    def moveCard(self, move, validate = True):
+    def checkCards(self):
+        cards = set()
+
+        for cardSuit, topPips in enumerate(self._foundations):
+            for cardPips in range(topPips + 1):
+                cards.add(makeCard(cardSuit, cardPips))
+
+        for cell, card in enumerate(self._cells):
+            assert card not in cards, f"Duplicate card {formatCard(card)} in cell {cell}"
+            if card != noCard: cards.add(card)
+
+        for column, cascade in enumerate(self._tableau):
+            for row, card in enumerate(cascade):
+                assert card not in cards, f"Duplicate card {formatCard(card)} in cascade {column}, row {row}"
+
+                cards.add(card)
+
+        if len(cards) != self._nsuits * 13:
+            for card in range(0, self._nsuits * 13):
+                assert card in cards, f"Missing card {formatCard(card)}"
+
+    def moveCard(self, move, validate = False):
         """Move a card at the start location to the finish
         location. Negative locations are the aces;
         locations past the number of cascades are the
@@ -223,9 +250,18 @@ class Board:
         #   Need to rehash after moving
         self._rehash = True
 
+        if validate:
+            self.checkCards()
+
         return move
 
-    def moveToFoundations(self):
+    def backtrack(self, moves, validate = False):
+        """Undoes a sequence of moves by executing them in reverse order."""
+        while moves:
+            finish, start = moves.pop()
+            self.moveCard((start, finish,), validate)
+
+    def moveToFoundations( self, validate = False ):
         """Move all cards that can cover aces.
         Return a list of the moves.
         This list should be treated as a single unit."""
@@ -245,7 +281,7 @@ class Board:
                 if self._foundations[cardSuit] == cardPips - 1:
                     start = self.indexOfCell(cell)
                     finish = self.indexOfFoundation(cardSuit)
-                    moves.append( self.moveCard( (start, finish, ) ) )
+                    moves.append( self.moveCard( (start, finish, ), validate ) )
 
             for start, cascade in enumerate(self._tableau):
                 while cascade:
@@ -256,13 +292,15 @@ class Board:
                     if self._foundations[cardSuit] != cardPips - 1: break
 
                     finish = self.indexOfFoundation(cardSuit)
-                    moves.append( self.moveCard( (start, finish, ), ) )
+                    moves.append( self.moveCard( (start, finish, ), validate ) )
 
         return moves
 
     def enumerateFinishCascades(self, start, card):
         """Enumerate all the finish cascades for a card."""
         moves = []
+
+        fromCell = self.isCellIndex( start )
         for finish, cascade in enumerate(self._tableau):
             if start == finish: continue
 
@@ -272,7 +310,9 @@ class Board:
                 #   exposed aces are always removed first
                 if under == card + 1:
                     moves.append((start, finish,))
-            else:
+
+            #   Don't move between empty cascades - NOP
+            elif fromCell or len(self._tableau[start]) > 1:
                 moves.append((start, finish,))
 
         return moves
@@ -349,32 +389,7 @@ class Board:
     def solved(self):
         return sum(self._foundations) == self._nsuits * 12
 
-    def backtrack(self, moves):
-        """Undoes a sequence of moves by executing them in reverse order."""
-        while moves:
-            finish, start = moves.pop()
-            self.moveCard((start, finish,), False)
-
-    def checkCards(self):
-        cards = set()
-
-        for cardSuit, topPips in enumerate(self._foundations):
-            for cardPips in range(topPips):
-                cards.add(makeCard(cardSuit, cardPips))
-
-        for cell, card in enumerate(self._cells):
-            assert card not in cards, f"Duplicate card {formatCard(card)} in cell {cell}"
-            if card != noCard: cards.add(card)
-
-        for column, cascade in enumerate(self._tableau):
-            for row, card in enumerate(cascade):
-                assert card not in cards, f"Duplicate card {formatCard(card)} in cascade {column}, row {row}"
-
-                cards.add(card)
-
-        #assert len(cards) == 52, str(self)
-
-    def solve(self, callback = None ):
+    def solve(self, callback = None, validate = False ):
         """Finds the first solution of the board using a depth first search.
         If a callback is provided, it will be given the board, solution and visited hash set
         and should return True to keep searching for shorter solutions, False to terminate."""
@@ -402,7 +417,12 @@ class Board:
             if stack[-1]:
                 moves = stack[-1]
                 move = moves.pop()
-                self.moveCard(move, False)
+                try:
+                    self.moveCard( move, validate )
+                except:
+                    print( move )
+                    print( self )
+                    raise
 
                 moves = [move,]
                 moves.extend(self.moveToFoundations())
@@ -411,12 +431,12 @@ class Board:
                 tooLong = ( solution and len(solution) <= len(history) )
 
                 #   Are we done?
-                if self.solved():
+                terminated = callback and not callback(board=self, solution=solution, visited=visited)
+                if terminated or self.solved():
                     #   Keep the shortest
                     if not tooLong:
                         solution = history.copy()
-                        if not callback or not callback(board=self, solution=solution, visited=visited):
-                            break
+                        if terminated or not callback: break
 
                     #   Nowhere else to go
                     self.backtrack(history.pop())
@@ -426,7 +446,7 @@ class Board:
                 memento = self.memento()
                 if memento in visited or tooLong:
                     #   Abort this level if we have been here before
-                    self.backtrack(history.pop())
+                    self.backtrack( history.pop(), validate )
 
                 else:
                     #   Remember this position
@@ -436,8 +456,7 @@ class Board:
                     if level:
                         stack.append(level)
                     else:
-                        self.backtrack(history.pop())
-
+                        self.backtrack( history.pop(), validate )
 
             else:
                 #   Go up one level

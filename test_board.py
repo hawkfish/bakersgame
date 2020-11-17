@@ -367,10 +367,9 @@ Cells:
             if cascade:
                 actual = setup.enumerateFinishCascades(start, cascade[-1])
                 expected = []
-                expected.append( (start, 0,) )
                 if start + 1 < len(setup._tableau):
                     expected.append( (start, start + 1,) )
-                self.assertEqual(expected, actual)
+                self.assertEqual(expected, actual, f"From cascade {start}" )
 
     def test_enumerate_moves_unshuffled(self):
         setup = board.Board(unshuffled)
@@ -486,6 +485,30 @@ Cells:
 
         #   Move isolate cascades to open cascade
         expected.extend( [ (start, 7, ) for start in isolate ] )
+        expected.pop( -2 )
+
+        actual = setup.enumerateMoves()
+        self.assertEqual(expected, actual)
+
+    def test_enumerate_moves_cover_aces(self):
+        setup = board.Board(unshuffled)
+
+        setup._foundations = [4, -1, 12, 1, ]
+        cascades = (
+            "QS",
+            "KD QD JD TD 9D 8D 7D 6D 5D 4D",
+            "JC",
+            "JS TS 9S 8S",
+            "KC QC JC TC 9C 8C 7C",
+            "2D",
+            "3S AD KS",
+            "7S 6S",)
+        for t, s in enumerate( cascades ):
+            setup._tableau[ t ] = board.parseDeck( s )
+        setup._cells = board.parseDeck( "4S -- 5S 3D" )
+        setup._firstFree = 1
+
+        expected = [(3, 9), (7, 9), (0, 9), (2, 9), (5, 9), (6, 9), (10, 7), (11, 1), (0, 6), ]
 
         actual = setup.enumerateMoves()
         self.assertEqual(expected, actual)
