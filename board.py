@@ -1,8 +1,13 @@
 #!/usr/bin/python3
 
+import copy
+
 noCard = -1
 
 king = 12
+queen = king - 1
+jack = queen - 1
+ten = jack - 1
 ace = 0
 
 suitChars = ['C', 'D', 'H', 'S', ]
@@ -435,7 +440,7 @@ class Board:
                 if terminated or self.solved():
                     #   Keep the shortest
                     if not tooLong:
-                        solution = history.copy()
+                        solution = copy.deepcopy( history )
                         if terminated or not callback: break
 
                     #   Nowhere else to go
