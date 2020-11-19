@@ -438,10 +438,12 @@ class Board:
                 #   Are we done?
                 terminated = callback and not callback(board=self, solution=solution, visited=visited)
                 if terminated or self.solved():
-                    #   Keep the shortest
-                    if not tooLong:
+                    #   Keep the shortest solution
+                    if self.solved() and not tooLong:
                         solution = copy.deepcopy( history )
-                        if terminated or not callback: break
+                        if not callback: terminated = True
+
+                    if terminated: break
 
                     #   Nowhere else to go
                     self.backtrack(history.pop())

@@ -37,7 +37,8 @@ def onSolved( improvements = 100 ):
             return False
 
         elif 0 == ( untried % (improvements/10) ):
-            sys.stdout.write('.')
+            solution = kwargs['solution']
+            sys.stdout.write(f'{len(solution)}.')
             sys.stdout.flush()
 
         return True
@@ -106,6 +107,7 @@ if __name__ == '__main__':
 
             b = board.Board(deck)
             solution = b.solve( onSolved( args.improvements ), args.validate )
+            print( f"Found a {len(solution)} move solution for {filename}:" )
             playSolution( deck, solution, filename )
     else:
         playing = True
