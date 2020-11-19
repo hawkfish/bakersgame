@@ -26,6 +26,9 @@ def formatMove( b, move ):
 def onSolved( improvements = 100 ):
     untried = improvements
 
+    sys.stdout.write(f'Solving...')
+    sys.stdout.flush()
+
     def callback(*args, **kwargs):
         b = kwargs['board']
         if not b.solved(): return True
@@ -33,7 +36,6 @@ def onSolved( improvements = 100 ):
         nonlocal untried
         untried = untried - 1
         if untried < 1:
-            print()
             return False
 
         elif 0 == ( untried % (improvements/10) ):
@@ -61,7 +63,7 @@ def generateSolvableBoard( improvements = 1 ):
 def playSolution( deck, solution, name = 'Generated' ):
     b = board.Board( deck )
 
-    print( f"Solving {name} deal" )
+    print( f"Playing {name} deal" )
 
     if not solution:
         print( "*" * 23 )
@@ -107,6 +109,7 @@ if __name__ == '__main__':
 
             b = board.Board(deck)
             solution = b.solve( onSolved( args.improvements ), args.validate )
+            print()
             print( f"Found a {len(solution)} move solution for {filename}:" )
             playSolution( deck, solution, filename )
     else:

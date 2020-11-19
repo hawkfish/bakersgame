@@ -436,7 +436,7 @@ class Board:
                 tooLong = ( solution and len(solution) <= len(history) )
 
                 #   Are we done?
-                terminated = callback and not callback(board=self, solution=solution, visited=visited)
+                terminated = callback and not callback(board=self, history=history, solution=solution, visited=visited)
                 if terminated or self.solved():
                     #   Keep the shortest solution
                     if self.solved() and not tooLong:
@@ -470,6 +470,9 @@ class Board:
                 stack.pop()
                 #   Back out the move
                 self.backtrack(history.pop())
+
+        #   Final callback with empty history
+        if callback: callback(board=self, history=history, solution=solution, visited=visited)
 
         #   Empty stack => empty history
         return solution
