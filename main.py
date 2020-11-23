@@ -60,16 +60,10 @@ def generateSolvableBoard( improvements = 1 ):
             print( f"Found a {len(solution)} move game after {attempt} attempt{plural}" )
             return (deck, solution, )
 
-def playSolution( deck, solution, name = 'Generated' ):
+def playSolution( deck, solution, name = 'generated' ):
     b = board.Board( deck )
 
     print( f"Playing {name} deal" )
-
-    if not solution:
-        print( "*" * 23 )
-        print( b )
-        print( "Unsolvable!" )
-        return True
 
     for turn in solution:
         if not turn: continue
@@ -88,7 +82,7 @@ def playSolution( deck, solution, name = 'Generated' ):
             b.moveCard( move, False )
         print( ", ".join( formatted ) )
 
-    print( f"Finished {name}!")
+    print( f"Finished playing {name}!")
 
     return True
 
@@ -110,8 +104,15 @@ if __name__ == '__main__':
             b = board.Board(deck)
             solution = b.solve( onSolved( args.improvements ), args.validate )
             print()
-            print( f"Found a {len(solution)} move solution for {filename}:" )
-            playSolution( deck, solution, filename )
+            if solution:
+                print( f"Found a {len(solution)} move solution for {filename}:" )
+                playSolution( deck, solution, filename )
+
+            else:
+                print( "*" * 23 )
+                print( b )
+                print( "Unsolvable!" )
+
     else:
         playing = True
         while( playing ):
